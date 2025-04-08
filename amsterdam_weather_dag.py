@@ -17,18 +17,25 @@ def fetch_amsterdam_weather():
     response.raise_for_status()
     data = response.json()
 
-    # Extract temperature
+    # Extract temperature and current time
     temp = data["current_weather"]["temperature"]
-
-    # Extract rain probability for the current hour
     current_time = data["current_weather"]["time"]
-    time_index = data["hourly"]["time"].index(current_time)
-    rain_prob = data["hourly"]["precipitation_probability"][time_index]
 
-    # Pretty logging
+    # Round down to the hour
+    parsed_time = datetime.fromisoformat(current_time)
+    hourly_time = parsed_time.replace(minute=0, second=0, microsecond=0).isoformat()
+
+    # Try to match rounded hour in hourly forecast
+    try:
+        time_index = data["hourly"]["time"].index(hourly_time)
+        rain_prob = data["hourly"]["precipitation_probability"][time_index]
+    except ValueError:
+        rain_prob = "N/A"
+
+    # Pretty output
     print("============================================")
     print("📍 Weather Report for: Amsterdam")
-    print(f"🕒 Time: {current_time}")
+    print(f"🕒 Time: {current_time} (rounded: {hourly_time})")
     print(f"🌡️ Temperature: {temp}°C")
     print(f"🌧️ Rain Probability: {rain_prob}%")
     print("============================================")
@@ -42,8 +49,8 @@ default_args = {
 with DAG(
     dag_id='amsterdam_weather_dag',
     default_args=default_args,
-    description='Get the current temperature and rain probability in Amsterdam',
-    schedule_interval=None,
+    description='Fetches and prints temperature and rain probability in Amsterdam',
+    schedule_interval=None,  # Trigger manually
     catchup=False,
     tags=['weather', 'amsterdam', 'test'],
 ) as dag:
